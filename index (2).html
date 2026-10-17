@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2E4F2B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Templo Verde · Identificador y gamificación botánica</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: {
+  colors: { brand: { dark:'#2E4F2B', primary:'#4A7A45', soft:'#8FA862', light:'#EBF5ED', accent:'#E8C842', bg:'#F6FAF6' } },
+  fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
+} } };
+</script>
+<style>
+  body { font-family:'Plus Jakarta Sans',sans-serif; background:#2E4F2B; touch-action:manipulation; }
+  .app { max-width:480px; min-height:100dvh; margin:0 auto; background:#F6FAF6; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,.25); }
+  .card { background:#fff; border:1px solid rgba(6,78,59,.06); border-radius:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .xp-bar { background:linear-gradient(90deg,#E8C842,#8FA862); }
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:#8FA862; border-radius:10px; }
+  :focus-visible { outline:2px solid #E8C842; outline-offset:2px; }
+  button:disabled { opacity:.55; cursor:not-allowed; }
+  @keyframes pop { from { transform:scale(.8); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .pop { animation:pop .3s cubic-bezier(.175,.885,.32,1.275) both; }
+  @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="bg-brand-dark text-white p-4 sticky top-0 z-30 shadow-md" style="padding-top:max(1rem,env(safe-area-inset-top))">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-brand-soft flex items-center justify-center text-xl border border-white/20" aria-hidden="true">🌿</div>
+        <div>
+          <h1 class="font-extrabold text-lg leading-tight text-brand-light">Templo Verde</h1>
+          <span id="header-rank" class="text-xs font-semibold text-brand-accent">Semilla novata</span>
+        </div>
+      </div>
+      <button type="button" data-go="profile" aria-label="Abrir perfil" class="flex items-center gap-2 bg-brand-primary/40 hover:bg-brand-primary p-1.5 pr-3 rounded-full transition border border-white/10">
+        <img id="header-avatar" alt="" class="w-8 h-8 rounded-full object-cover border border-brand-accent">
+        <span id="header-xp" class="text-xs font-bold text-brand-accent">0 XP</span>
+      </button>
+    </div>
+    <div class="mt-3 bg-black/20 h-2 w-full rounded-full overflow-hidden p-0.5 border border-white/10">
+      <div id="header-bar" class="xp-bar h-full rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+  </header>
+
+  <main id="main" class="flex-1 overflow-y-auto px-4 pt-4" style="padding-bottom:6.5rem">
+
+    <!-- INICIO -->
+    <section id="sec-home" class="space-y-5">
+      <div class="bg-gradient-to-br from-brand-dark to-brand-primary text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
+        <div class="absolute -right-6 -bottom-6 text-8xl opacity-10 pointer-events-none" aria-hidden="true">🌱</div>
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <img id="dash-avatar" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-brand-accent">
+            <span id="dash-level" class="absolute -bottom-1 -right-1 bg-brand-accent text-brand-dark text-[10px] font-black px-1.5 py-0.5 rounded-full">Nv 1</span>
+          </div>
+          <div>
+            <h2 id="dash-name" class="font-bold text-lg">¡Hola!</h2>
+            <p id="dash-rank" class="text-xs text-brand-accent font-semibold"></p>
+            <p id="dash-xp-text" class="text-xs text-emerald-100 mt-1"></p>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="flex justify-between text-[11px] font-semibold text-emerald-100 mb-1"><span>Progreso de rango</span><span id="dash-pct">0%</span></div>
+          <div class="w-full bg-black/30 h-3 rounded-full overflow-hidden p-0.5"><div id="dash-bar" class="xp-bar h-full rounded-full transition-all duration-500" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div id="quick-cards" class="grid grid-cols-2 gap-3"></div>
+
+      <div class="card p-4">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-sm text-brand-dark flex items-center gap-2"><i class="fa-solid fa-leaf text-brand-soft"></i> Colección reciente</h3>
+          <button type="button" data-go="garden" class="text-xs font-semibold text-brand-primary hover:underline">Ver todo</button>
+        </div>
+        <div id="dash-recent" class="flex gap-3 overflow-x-auto pb-1"></div>
+      </div>
+    </section>
+
+    <!-- ESCÁNER -->
+    <section id="sec-scanner" class="hidden space-y-4">
+      <div class="card p-5 rounded-3xl text-center">
+        <h2 class="font-bold text-lg text-brand-dark mb-1">Escanear planta</h2>
+        <p class="text-xs text-gray-500 mb-4">Sube una foto para identificarla y ganar <strong class="text-brand-dark bg-brand-accent/30 px-1.5 py-0.5 rounded">+100 XP</strong></p>
+
+        <div class="border-2 border-dashed border-brand-soft rounded-2xl p-6 bg-brand-bg flex flex-col items-center justify-center min-h-[220px] relative overflow-hidden">
+          <img id="scan-preview" alt="Vista previa de la planta" class="hidden absolute inset-0 w-full h-full object-cover">
+          <div id="scan-prompt" class="space-y-2">
+            <div class="w-16 h-16 rounded-full bg-brand-light text-brand-dark mx-auto flex items-center justify-center text-2xl"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+            <p class="text-xs text-gray-600 font-medium">Toca para tomar una foto o elegir un archivo</p>
+            <p class="text-[10px] text-gray-400">JPG, PNG o WebP</p>
+          </div>
+          <input type="file" id="scan-file" accept="image/*" aria-label="Elegir foto de la planta" class="absolute inset-0 opacity-0 cursor-pointer">
+        </div>
+
+        <div class="flex gap-2 mt-4">
+          <button type="button" id="scan-change" class="flex-1 bg-brand-light hover:bg-brand-soft/20 text-brand-dark py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"><i class="fa-solid fa-camera"></i> Cambiar foto</button>
+          <button type="button" id="scan-go" disabled class="flex-1 bg-brand-dark hover:bg-brand-primary text-white py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md"><i class="fa-solid fa-wand-magic-sparkles text-brand-accent"></i> Identificar (+100 XP)</button>
+        </div>
+      </div>
+
+      <div id="scan-loading" class="hidden card p-6 text-center space-y-3" role="status">
+        <i class="fa-solid fa-circle-notch animate-spin text-3xl text-brand-soft"></i>
+        <p class="text-xs font-bold text-brand-dark">Analizando la planta con IA…</p>
+      </div>
+      <p id="scan-error" class="hidden text-xs bg-red-50 text-red-700 border border-red-200 rounded-2xl p-4" role="alert"></p>
+
+      <div id="scan-result" class="hidden card p-5 rounded-3xl space-y-4">
+        <div class="flex items-center justify-between border-b pb-3 gap-3">
+          <div class="min-w-0">
+            <span class="text-[10px] font-extrabold bg-emerald-100 text-brand-dark px-2 py-0.5 rounded-full">Planta identificada</span>
+            <h3 id="res-name" class="text-lg font-extrabold text-brand-dark mt-1"></h3>
+            <p id="res-sci" class="text-xs italic text-gray-500"></p>
+          </div>
+          <div class="bg-brand-accent text-brand-dark px-3 py-1.5 rounded-2xl text-center font-black shrink-0">
+            <span class="block text-[10px] leading-tight">XP</span><span class="text-sm">+100</span>
+          </div>
+        </div>
+        <p id="res-desc" class="text-xs text-gray-600 leading-relaxed"></p>
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-brand-light p-2 rounded-xl"><i class="fa-solid fa-droplet text-blue-500 text-sm mb-1"></i><span class="block text-[10px] text-gray-500">Riego</span><span id="res-water" class="block text-[11px] font-bold text-brand-dark"></span></div>
+          <div class="bg-brand-light p-2 rounded-xl"><i class="fa-solid fa-sun text-amber-500 text-sm mb-1"></i><span class="block text-[10px] text-gray-500">Luz</span><span id="res-light" class="block text-[11px] font-bold text-brand-dark"></span></div>
+          <div class="bg-brand-light p-2 rounded-xl"><i class="fa-solid fa-gauge text-red-400 text-sm mb-1"></i><span class="block text-[10px] text-gray-500">Dificultad</span><span id="res-diff" class="block text-[11px] font-bold text-brand-dark"></span></div>
+        </div>
+        <button type="button" id="scan-save" class="w-full bg-brand-soft hover:bg-brand-primary text-white py-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2"><i class="fa-solid fa-bookmark"></i> Guardar en Mi Jardín</button>
+      </div>
+    </section>
+
+    <!-- JARDÍN -->
+    <section id="sec-garden" class="hidden space-y-4">
+      <div class="flex justify-between items-center">
+        <div><h2 class="font-bold text-lg text-brand-dark">Mi Jardín Botánico</h2><p class="text-xs text-gray-500">Plantas escaneadas y guardadas</p></div>
+        <span id="garden-badge" class="bg-brand-dark text-brand-accent text-xs font-bold px-3 py-1 rounded-full">0 plantas</span>
+      </div>
+      <div id="garden-grid" class="grid grid-cols-2 gap-3"></div>
+      <div id="garden-empty" class="card p-8 rounded-3xl text-center space-y-3">
+        <div class="text-5xl opacity-40" aria-hidden="true">🪴</div>
+        <h3 class="font-bold text-sm text-brand-dark">Tu jardín está vacío</h3>
+        <p class="text-xs text-gray-500">Escanea una planta y guárdala para empezar tu colección.</p>
+        <button type="button" data-go="scanner" class="bg-brand-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-brand-primary transition">Ir al escáner</button>
+      </div>
+    </section>
+
+    <!-- DOCTOR -->
+    <section id="sec-doctor" class="hidden space-y-4">
+      <div class="card p-5 rounded-3xl text-center space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-500 mx-auto flex items-center justify-center text-xl"><i class="fa-solid fa-stethoscope"></i></div>
+        <h2 class="font-bold text-lg text-brand-dark">Doctor Planta</h2>
+        <p class="text-xs text-gray-500">Sube una foto de una hoja con manchas o síntomas para recibir un diagnóstico orientativo.</p>
+        <div class="border-2 border-dashed border-red-200 rounded-2xl p-6 bg-red-50/30 flex flex-col items-center justify-center min-h-[160px] relative overflow-hidden">
+          <img id="doc-preview" alt="Vista previa de la hoja" class="hidden absolute inset-0 w-full h-full object-cover">
+          <div id="doc-prompt" class="space-y-2"><i class="fa-solid fa-file-medical text-2xl text-red-300"></i><p class="text-xs text-gray-600 font-medium">Subir foto de la hoja o del síntoma</p></div>
+          <input type="file" id="doc-file" accept="image/*" aria-label="Elegir foto de la hoja" class="absolute inset-0 opacity-0 cursor-pointer">
+        </div>
+        <button type="button" id="doc-go" disabled class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2"><i class="fa-solid fa-microscope"></i> Diagnosticar hoja</button>
+      </div>
+      <div id="doc-loading" class="hidden card p-6 text-center space-y-2" role="status">
+        <i class="fa-solid fa-circle-notch animate-spin text-2xl text-red-500"></i>
+        <p class="text-xs font-bold text-brand-dark">Buscando plagas y deficiencias…</p>
+      </div>
+      <p id="doc-error" class="hidden text-xs bg-red-50 text-red-700 border border-red-200 rounded-2xl p-4" role="alert"></p>
+      <div id="doc-result" class="hidden card p-5 rounded-3xl space-y-3">
+        <span class="bg-red-100 text-red-700 text-[10px] font-bold px-2.5 py-1 rounded-full">Diagnóstico completado</span>
+        <h3 id="doc-title" class="text-base font-bold text-brand-dark"></h3>
+        <p id="doc-body" class="text-xs text-gray-600 leading-relaxed"></p>
+        <ul id="doc-tips" class="text-xs text-gray-600 space-y-1.5 list-disc pl-4"></ul>
+        <p class="text-[10px] text-gray-400">Orientativo: no sustituye la opinión de un especialista.</p>
+      </div>
+    </section>
+
+    <!-- CHAT -->
+    <section id="sec-botanist" class="hidden">
+      <div class="card rounded-3xl overflow-hidden flex flex-col" style="height:calc(100dvh - 15rem);min-height:360px">
+        <div class="bg-brand-light p-3.5 border-b flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-brand-dark text-white flex items-center justify-center text-sm" aria-hidden="true">🤖</div>
+          <div><h3 class="font-bold text-xs text-brand-dark">Asistente Botánico</h3><p class="text-[10px] text-emerald-700">Impulsado por Gemini</p></div>
+        </div>
+        <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-3 text-xs" aria-live="polite"></div>
+        <div class="p-3 border-t bg-gray-50 flex gap-2 items-center">
+          <input type="text" id="chat-input" maxlength="500" placeholder="Ej: ¿Cada cuánto riego un cactus?" aria-label="Escribe tu pregunta" class="flex-1 text-xs p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-soft">
+          <button type="button" id="chat-send" aria-label="Enviar" class="bg-brand-dark text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-brand-primary transition"><i class="fa-solid fa-paper-plane text-xs"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PERFIL -->
+    <section id="sec-profile" class="hidden space-y-5">
+      <div class="card p-5 rounded-3xl space-y-4">
+        <div class="flex items-center gap-4">
+          <img id="prof-avatar" alt="" class="w-20 h-20 rounded-full object-cover border-4 border-brand-light shadow">
+          <div class="flex-1 min-w-0">
+            <h2 id="prof-name" class="font-bold text-base text-brand-dark"></h2>
+            <p id="prof-email" class="text-xs text-gray-400 truncate"></p>
+            <button type="button" id="auth-btn" class="mt-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-2">
+              <i class="fa-brands fa-google"></i><span id="auth-text"></span>
+            </button>
+            <p id="auth-msg" class="text-[11px] text-gray-500 mt-1.5" role="status"></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t">
+          <div class="bg-brand-bg p-3 rounded-2xl text-center"><span class="block text-xs text-gray-500">XP total</span><span id="prof-xp" class="text-lg font-black text-brand-dark">0 XP</span></div>
+          <div class="bg-brand-bg p-3 rounded-2xl text-center"><span class="block text-xs text-gray-500">Plantas escaneadas</span><span id="prof-scanned" class="text-lg font-black text-brand-soft">0</span></div>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-r from-brand-dark to-brand-primary p-5 rounded-3xl text-white space-y-3">
+        <div class="flex justify-between items-center">
+          <div><span class="text-[10px] text-brand-accent font-extrabold">Rango actual</span><h3 id="prof-rank" class="text-lg font-black"></h3></div>
+          <div id="prof-rank-icon" class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl border border-white/20"></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-xs text-emerald-100 mb-1 font-semibold"><span>Siguiente rango</span><span id="prof-needed"></span></div>
+          <div class="w-full bg-black/30 h-3 rounded-full overflow-hidden p-0.5"><div id="prof-bar" class="xp-bar h-full rounded-full transition-all duration-500" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="card p-5 rounded-3xl space-y-3">
+        <h3 class="font-bold text-sm text-brand-dark flex items-center gap-2"><i class="fa-solid fa-trophy text-brand-accent"></i> Escala de rangos</h3>
+        <div id="ranks" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="card p-5 rounded-3xl space-y-3">
+        <h3 class="font-bold text-sm text-brand-dark flex items-center gap-2"><i class="fa-solid fa-key text-brand-soft"></i> Clave de Gemini</h3>
+        <p class="text-xs text-gray-500">La IA necesita una clave gratuita de <a class="underline text-brand-primary" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Se guarda solo en este navegador.</p>
+        <div class="flex gap-2">
+          <input type="password" id="key-input" autocomplete="off" placeholder="Pega tu clave aquí" aria-label="Clave de API de Gemini" class="flex-1 min-w-0 text-xs p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-soft">
+          <button type="button" id="key-save" class="bg-brand-dark text-white text-xs font-bold px-4 rounded-xl hover:bg-brand-primary transition">Guardar</button>
+        </div>
+        <p id="key-status" class="text-[11px] text-gray-500"></p>
+        <button type="button" id="reset-btn" class="text-[11px] font-semibold text-red-600 hover:underline">Reiniciar todo el progreso</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal de celebración -->
+  <div id="modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="bg-white rounded-3xl p-6 text-center max-w-xs w-full space-y-4 pop shadow-2xl border-4 border-brand-accent">
+      <div class="w-20 h-20 rounded-full bg-brand-light mx-auto flex items-center justify-center text-4xl" aria-hidden="true">🎉</div>
+      <div>
+        <h3 id="modal-title" class="text-xl font-black text-brand-dark"></h3>
+        <p class="text-xs text-gray-600 mt-1">Has identificado una nueva planta.</p>
+      </div>
+      <div id="modal-rank" class="hidden bg-brand-light p-3 rounded-2xl border border-brand-soft/30">
+        <span class="text-[10px] text-brand-primary font-bold block">¡Nuevo rango!</span>
+        <span id="modal-rank-name" class="text-sm font-black text-brand-dark"></span>
+      </div>
+      <button type="button" id="modal-close" class="w-full bg-brand-dark text-white py-3 rounded-xl font-bold text-xs hover:bg-brand-primary transition shadow-md">Continuar</button>
+    </div>
+  </div>
+
+  <nav id="nav" aria-label="Navegación principal" class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white border-t border-emerald-900/10 px-1 pt-2 flex justify-around items-center z-40 rounded-t-2xl shadow-lg" style="padding-bottom:max(.5rem,env(safe-area-inset-bottom))"></nav>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/* ---------- Firebase: pega aquí la configuración de tu proyecto ----------
+   Consola de Firebase → Configuración del proyecto → Tus apps → App web → "Config" */
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyA1wZBBoPUy3sSCqpAw3wMdsa5o4_LJH9o',
+  authDomain: 'templo-verde.firebaseapp.com',
+  projectId: 'templo-verde',
+  storageBucket: 'templo-verde.firebasestorage.app',
+  messagingSenderId: '711263468914',
+  appId: '1:711263468914:web:e2573c701ca64f649031eb'
+};
+const CLOUD_READY = Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+let auth = null, db = null;
+if (CLOUD_READY) {
+  const fbApp = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(fbApp);
+  db = getFirestore(fbApp);
+}
+
+/* ---------- Configuración ---------- */
+const MODEL = 'gemini-2.5-flash';              // cambia aquí el modelo si hace falta
+const USER_KEY = 'templo_verde_user';
+const API_KEY_KEY = 'templo_verde_gemini_key';
+
+const RANKS = [
+  { name:'Semilla novata', min:0, icon:'🌱' },
+  { name:'Brote curioso', min:100, icon:'🌿' },
+  { name:'Jardinero aprendiz', min:300, icon:'🪴' },
+  { name:'Guardián de hojas', min:600, icon:'🍃' },
+  { name:'Cazador de flores', min:1000, icon:'🌸' },
+  { name:'Jardinero experto', min:1500, icon:'🌻' },
+  { name:'Explorador botánico', min:2100, icon:'🔍' },
+  { name:'Maestro del jardín', min:2800, icon:'🏡' },
+  { name:'Coleccionista exótico', min:3600, icon:'🌺' },
+  { name:'Protector del bosque', min:4500, icon:'🌲' },
+  { name:'Druida de la naturaleza', min:5500, icon:'🔮' },
+  { name:'Sabio de la flora', min:6600, icon:'📜' },
+  { name:'Guardián ancestral', min:7800, icon:'🏛️' },
+  { name:'Espíritu del bosque', min:9100, icon:'✨' },
+  { name:'Deidad de la naturaleza', min:10500, icon:'👑' }
+];
+
+const TABS = [
+  ['home','Inicio','fa-house'], ['scanner','Escáner','fa-camera'], ['garden','Jardín','fa-seedling'],
+  ['doctor','Doctor','fa-stethoscope'], ['botanist','Botánico','fa-robot'], ['profile','Perfil','fa-user']
+];
+
+const QUICK = [
+  ['scanner','fa-camera','bg-brand-light text-brand-dark','+100 XP','Escanear planta','Identifica especies con IA',''],
+  ['doctor','fa-stethoscope','bg-red-50 text-red-600','Diagnóstico','Doctor Planta','Detecta enfermedades',''],
+  ['botanist','fa-robot','bg-emerald-50 text-brand-dark','Asistente IA','Botánico Chat','Resuelve tus dudas',''],
+  ['garden','fa-seedling','bg-brand-light text-brand-dark','0 plantas','Mi Jardín','Colección guardada','dash-garden-count']
+];
+
+/* ---------- Utilidades ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const setText = (id, t) => { $(id).textContent = t; };
+const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
+
+/* ---------- Estado ---------- */
+const DEFAULT_USER = { xp:0, scannedCount:0, garden:[] };
+let user = loadUser();
+let account = null;   // { uid, name, email, photoURL } cuando hay sesión de Google
+let authErr = '';
+let scan = null;      // { image, name, ..., rewarded, saved }
+let docImage = null;
+let chatHistory = [];
+
+function loadUser() {
+  try {
+    const u = { ...DEFAULT_USER, ...JSON.parse(localStorage.getItem(USER_KEY)) };
+    if (!Array.isArray(u.garden)) u.garden = [];
+    u.xp = Number(u.xp) || 0;
+    u.scannedCount = Number(u.scannedCount) || 0;
+    return u;
+  } catch { return { ...DEFAULT_USER, garden:[] }; }
+}
+
+function persist() {
+  if (account) cloudProfile();                 // con sesión: los datos viven en tu cuenta
+  else {                                       // invitado: solo en este navegador
+    try { localStorage.setItem(USER_KEY, JSON.stringify(user)); }
+    catch { alert('No hay espacio para guardar más fotos. Elimina alguna planta de tu jardín.'); return false; }
+  }
+  updateUI();
+  return true;
+}
+
+const getApiKey = () => { try { return localStorage.getItem(API_KEY_KEY) || ''; } catch { return ''; } };
+
+function avatar() {
+  if (account?.photoURL) return account.photoURL;
+  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%238FA862'/><text x='50' y='64' font-size='40' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'>IV</text></svg>`;
+}
+
+/* ---------- Rangos ---------- */
+function rankIndex(xp) {
+  for (let i = RANKS.length - 1; i >= 0; i--) if (xp >= RANKS[i].min) return i;
+  return 0;
+}
+
+function progress(xp) {
+  const i = rankIndex(xp), cur = RANKS[i], next = RANKS[i + 1] || null;
+  if (!next) return { i, cur, next, pct:100, left:0 };
+  const pct = Math.min(100, Math.floor(((xp - cur.min) / (next.min - cur.min)) * 100));
+  return { i, cur, next, pct, left:next.min - xp };
+}
+
+function addXP(amount) {
+  const before = rankIndex(user.xp);
+  user.xp += amount;
+  const after = rankIndex(user.xp);
+  persist();
+  setText('modal-title', `+${amount} XP ganados`);
+  show('modal-rank', after > before);
+  if (after > before) setText('modal-rank-name', `${RANKS[after].icon} ${RANKS[after].name}`);
+  show('modal');
+  $('modal-close').focus();
+}
+
+/* ---------- Interfaz ---------- */
+function updateUI() {
+  const { i, cur, next, pct, left } = progress(user.xp);
+  const img = avatar();
+  const n = user.garden.length;
+  const name = account?.name || 'Invitado Templo';
+  const plural = `${n} ${n === 1 ? 'planta' : 'plantas'}`;
+
+  setText('header-rank', cur.name);
+  setText('header-xp', `${user.xp} XP`);
+  ['header-avatar','dash-avatar','prof-avatar'].forEach(id => { $(id).referrerPolicy = 'no-referrer'; $(id).src = img; });
+  ['header-bar','dash-bar','prof-bar'].forEach(id => { $(id).style.width = pct + '%'; });
+
+  setText('dash-name', `¡Hola, ${name.split(' ')[0]}!`);
+  $('dash-rank').innerHTML = `<i class="fa-solid fa-award"></i> ${esc(cur.name)}`;
+  setText('dash-level', `Nv ${i + 1}`);
+  setText('dash-xp-text', next ? `${user.xp} / ${next.min} XP` : `${user.xp} XP (máximo)`);
+  setText('dash-pct', pct + '%');
+  setText('dash-garden-count', plural);
+
+  setText('prof-name', name);
+  setText('prof-email', account ? account.email : 'Modo invitado');
+  setText('prof-xp', `${user.xp} XP`);
+  setText('prof-scanned', user.scannedCount);
+  setText('prof-rank', cur.name);
+  setText('prof-rank-icon', cur.icon);
+  setText('prof-needed', next ? `${left} XP para ${next.name}` : '¡Rango máximo!');
+  setText('auth-text', account ? 'Cerrar sesión' : 'Iniciar sesión con Google');
+  setText('garden-badge', plural);
+
+  renderRecent();
+  renderGarden();
+  renderRanks();
+}
+
+function renderRecent() {
+  $('dash-recent').innerHTML = user.garden.length
+    ? user.garden.slice(0, 4).map(p => `
+        <div class="shrink-0 w-24 bg-brand-bg rounded-xl overflow-hidden border border-emerald-900/5 text-center p-1.5">
+          <img src="${esc(p.image)}" alt="${esc(p.name)}" class="w-full h-16 object-cover rounded-lg mb-1">
+          <span class="block text-[11px] font-bold text-brand-dark truncate">${esc(p.name)}</span>
+        </div>`).join('')
+    : '<p class="text-xs text-gray-400 italic py-2">Aún no has guardado plantas. Escanea la primera para ganar +100 XP.</p>';
+}
+
+function renderGarden() {
+  show('garden-empty', user.garden.length === 0);
+  $('garden-grid').innerHTML = user.garden.map(p => `
+    <div class="card overflow-hidden flex flex-col">
+      <img src="${esc(p.image)}" alt="${esc(p.name)}" class="w-full h-28 object-cover">
+      <div class="p-3 flex-1 flex flex-col justify-between">
+        <div>
+          <h4 class="font-bold text-xs text-brand-dark leading-tight">${esc(p.name)}</h4>
+          <p class="text-[10px] italic text-gray-400">${esc(p.scientific)}</p>
+        </div>
+        <div class="mt-2 pt-2 border-t flex justify-between items-center text-[10px] text-gray-500">
+          <span>${esc(p.date)}</span>
+          <button type="button" data-del="${esc(p.id)}" aria-label="Eliminar ${esc(p.name)}" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderRanks() {
+  const idx = rankIndex(user.xp);
+  $('ranks').innerHTML = RANKS.map((r, k) => {
+    const max = RANKS[k + 1] ? RANKS[k + 1].min - 1 : '∞';
+    const style = k === idx ? 'bg-brand-light border-2 border-brand-soft font-bold' : k < idx ? 'bg-gray-50 text-gray-700' : 'bg-gray-50/50 opacity-50';
+    return `<div class="p-2.5 rounded-2xl flex items-center justify-between text-xs ${style}">
+      <div class="flex items-center gap-2.5"><span class="text-lg">${r.icon}</span>
+        <div><span class="block text-brand-dark">${esc(r.name)}</span><span class="text-[10px] text-gray-400">${r.min} - ${max} XP</span></div></div>
+      ${k === idx ? '<span class="bg-brand-accent text-brand-dark text-[9px] font-black px-2 py-0.5 rounded-full">Actual</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function switchTab(id) {
+  TABS.forEach(([t]) => {
+    show('sec-' + t, t === id);
+    const b = $('nav-' + t);
+    b.classList.toggle('text-brand-dark', t === id);
+    b.classList.toggle('text-gray-400', t !== id);
+    t === id ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current');
+  });
+  $('main').scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
+/* ---------- Imágenes ---------- */
+function fileToJpeg(file, max = 800) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.75));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen.')); };
+    img.src = url;
+  });
+}
+
+async function pickImage(file, previewId, promptId, errorId) {
+  show(errorId, false);
+  if (!file) return null;
+  try {
+    const data = await fileToJpeg(file);
+    $(previewId).src = data;
+    show(previewId);
+    $(promptId).classList.add('opacity-0');
+    return data;
+  } catch (e) { showError(errorId, e); return null; }
+}
+
+/* ---------- Gemini ---------- */
+async function gemini(contents, { system, json } = {}) {
+  const key = getApiKey();
+  if (!key) throw new Error('NO_KEY');
+  const body = { contents };
+  if (system) body.systemInstruction = { parts:[{ text:system }] };
+  if (json) body.generationConfig = { responseMimeType:'application/json' };
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'x-goog-api-key':key },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error?.message || `Error ${res.status}`);
+  const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+  if (!text) throw new Error('La IA no devolvió respuesta. Prueba con otra foto o pregunta.');
+  return text;
+}
+
+function parseJSON(text) {
+  const clean = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
+  const v = JSON.parse(clean);
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function showError(id, e) {
+  const m = e.message === 'NO_KEY'
+    ? 'Falta tu clave de Gemini. Añádela en Perfil → Clave de Gemini.'
+    : e instanceof SyntaxError ? 'La respuesta de la IA no se pudo interpretar. Inténtalo de nuevo.'
+    : (e.message || 'Algo salió mal. Inténtalo de nuevo.');
+  setText(id, m);
+  show(id);
+}
+
+const b64 = dataUrl => dataUrl.split(',')[1];
+
+/* ---------- Escáner ---------- */
+async function onScanFile(e) {
+  const data = await pickImage(e.target.files[0], 'scan-preview', 'scan-prompt', 'scan-error');
+  e.target.value = '';
+  if (!data) return;
+  scan = { image:data, rewarded:false, saved:false };
+  show('scan-result', false);
+  $('scan-go').disabled = false;
+}
+
+async function identify() {
+  if (!scan) return;
+  show('scan-error', false); show('scan-result', false); show('scan-loading');
+  $('scan-go').disabled = true;
+  try {
+    const text = await gemini([{ parts:[
+      { text:'Identifica la planta de la foto. Responde solo con JSON: {"name":"nombre común en español","scientific":"nombre científico","description":"descripción breve en español, máximo 25 palabras","water":"Bajo|Moderado|Alto","light":"Directa|Indirecta|Sombra","difficulty":"Fácil|Media|Difícil"}. Si la imagen no muestra una planta, responde {"error":"no_plant"}.' },
+      { inlineData:{ mimeType:'image/jpeg', data:b64(scan.image) } }
+    ] }], { json:true });
+    const p = parseJSON(text);
+    if (!p || p.error || !p.name) throw new Error('No se detectó ninguna planta en la foto. Prueba con otra imagen más cercana.');
+
+    Object.assign(scan, {
+      name:p.name, scientific:p.scientific || 'Especie sin determinar', description:p.description || '',
+      water:p.water || '—', light:p.light || '—', difficulty:p.difficulty || '—'
+    });
+    setText('res-name', scan.name); setText('res-sci', scan.scientific); setText('res-desc', scan.description);
+    setText('res-water', scan.water); setText('res-light', scan.light); setText('res-diff', scan.difficulty);
+    $('scan-save').disabled = scan.saved;
+    show('scan-result');
+    if (!scan.rewarded) { scan.rewarded = true; user.scannedCount++; addXP(100); }
+  } catch (e) { showError('scan-error', e); }
+  finally { show('scan-loading', false); $('scan-go').disabled = false; }
+}
+
+function saveToGarden() {
+  if (!scan || !scan.name || scan.saved) return;
+  scan.saved = true;
+  const plant = { id:Date.now(), image:scan.image, name:scan.name, scientific:scan.scientific, date:new Date().toLocaleDateString('es') };
+  user.garden.unshift(plant);
+  if (!persist()) { user.garden.shift(); scan.saved = false; return; }
+  if (account) cloudPutPlant(plant);
+  $('scan-save').disabled = true;
+  switchTab('garden');
+}
+
+/* ---------- Doctor Planta ---------- */
+async function onDocFile(e) {
+  const data = await pickImage(e.target.files[0], 'doc-preview', 'doc-prompt', 'doc-error');
+  e.target.value = '';
+  if (!data) return;
+  docImage = data;
+  show('doc-result', false);
+  $('doc-go').disabled = false;
+}
+
+async function diagnose() {
+  if (!docImage) return;
+  show('doc-error', false); show('doc-result', false); show('doc-loading');
+  $('doc-go').disabled = true;
+  try {
+    const text = await gemini([{ parts:[
+      { text:'Eres fitopatólogo. Analiza la planta de la foto y responde solo con JSON: {"title":"problema probable","body":"explicación breve en español, máximo 40 palabras","tips":["acción 1","acción 2","acción 3"]}. Si la planta parece sana, dilo en el título. Si no hay planta, responde {"error":"no_plant"}.' },
+      { inlineData:{ mimeType:'image/jpeg', data:b64(docImage) } }
+    ] }], { json:true });
+    const d = parseJSON(text);
+    if (!d || d.error || !d.title) throw new Error('No se detectó ninguna planta en la foto. Prueba con otra imagen.');
+    setText('doc-title', d.title);
+    setText('doc-body', d.body || '');
+    $('doc-tips').innerHTML = (Array.isArray(d.tips) ? d.tips : []).map(t => `<li>${esc(t)}</li>`).join('');
+    show('doc-result');
+  } catch (e) { showError('doc-error', e); }
+  finally { show('doc-loading', false); $('doc-go').disabled = false; }
+}
+
+/* ---------- Chat ---------- */
+function addBubble(role, text, extra = '') {
+  const mine = role === 'user';
+  const row = document.createElement('div');
+  row.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
+  const b = document.createElement('div');
+  b.className = `p-3 rounded-2xl leading-relaxed max-w-[85%] whitespace-pre-wrap break-words ${mine ? 'bg-brand-dark text-white rounded-tr-none' : 'bg-brand-light text-brand-dark rounded-tl-none'} ${extra}`;
+  b.textContent = text;
+  row.appendChild(b);
+  $('chat-box').appendChild(row);
+  $('chat-box').scrollTop = $('chat-box').scrollHeight;
+  return row;
+}
+
+async function sendChat() {
+  const input = $('chat-input'), q = input.value.trim();
+  if (!q || input.disabled) return;
+  input.value = ''; input.disabled = true; $('chat-send').disabled = true;
+  addBubble('user', q);
+  const typing = addBubble('model', 'Escribiendo…', 'italic text-gray-400');
+  try {
+    const reply = await gemini(
+      [...chatHistory.slice(-10), { role:'user', parts:[{ text:q }] }],
+      { system:'Eres un botánico experto, amable y entusiasta. Responde en español, en 2 a 4 frases claras, sobre cuidado de plantas. Si la pregunta no trata de plantas, redirige con amabilidad.' }
+    );
+    chatHistory.push({ role:'user', parts:[{ text:q }] }, { role:'model', parts:[{ text:reply }] });
+    typing.remove();
+    addBubble('model', reply);
+  } catch (e) {
+    typing.remove();
+    addBubble('model', e.message === 'NO_KEY' ? 'Falta tu clave de Gemini. Añádela en Perfil → Clave de Gemini.' : `No pude responder: ${e.message}`, 'text-red-700 bg-red-50');
+  } finally {
+    input.disabled = false; $('chat-send').disabled = false; input.focus();
+  }
+}
+
+/* ---------- Perfil ---------- */
+const setMsg = (t, err = false) => { const el = $('auth-msg'); el.textContent = t; el.className = 'text-[11px] mt-1.5 ' + (err ? 'text-red-600' : 'text-gray-500'); };
+const GUEST_MSG = 'Modo invitado: tus datos solo están en este navegador. Inicia sesión para guardarlos en tu cuenta.';
+
+async function toggleAuth() {
+  if (!CLOUD_READY) { setMsg('Falta la configuración de Firebase (FIREBASE_CONFIG al inicio del script).', true); return; }
+  try {
+    if (account) await signOut(auth);
+    else await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+    setMsg(e.code === 'auth/unauthorized-domain'
+      ? 'Este dominio no está autorizado en Firebase (Authentication → Configuración → Dominios autorizados).'
+      : `No se pudo iniciar sesión: ${e.message}`, true);
+  }
+}
+
+async function handleAuth(u) {
+  if (!u) {
+    account = null; user = loadUser(); updateUI();
+    setMsg(authErr || GUEST_MSG, Boolean(authErr)); authErr = '';
+    return;
+  }
+  try {
+    setMsg('Sincronizando…');
+    await loadCloud(u);
+    setMsg('Datos guardados en tu cuenta de Google.');
+  } catch (e) {
+    account = null;
+    authErr = e.code === 'permission-denied'
+      ? 'Firestore rechazó el acceso: revisa las reglas de seguridad.'
+      : `No se pudieron cargar tus datos: ${e.message}`;
+    await signOut(auth).catch(() => {});
+  }
+  updateUI();
+}
+
+async function loadCloud(u) {
+  const guest = user;
+  const uref = doc(db, 'users', u.uid);
+  const [snap, plants] = await Promise.all([getDoc(uref), getDocs(collection(uref, 'plants'))]);
+  const c = snap.exists() ? snap.data() : {};
+  const cloudPlants = plants.docs.map(d => d.data());
+  const known = new Set(cloudPlants.map(p => String(p.id)));
+  const extra = guest.garden.filter(p => !known.has(String(p.id)));   // plantas hechas como invitado
+  account = { uid:u.uid, name:u.displayName || 'Jardinero', email:u.email || '', photoURL:u.photoURL || '' };
+  user = {
+    xp: Math.max(Number(c.xp) || 0, guest.xp),
+    scannedCount: Math.max(Number(c.scannedCount) || 0, guest.scannedCount),
+    garden: [...extra, ...cloudPlants].sort((a, b) => b.id - a.id)
+  };
+  await Promise.all([cloudProfile(), ...extra.map(cloudPutPlant)]);
+}
+
+async function cloudProfile() {
+  try { await setDoc(doc(db, 'users', account.uid), { xp:user.xp, scannedCount:user.scannedCount, updatedAt:serverTimestamp() }, { merge:true }); }
+  catch (e) { setMsg(`No se pudo sincronizar: ${e.message}`, true); }
+}
+async function cloudPutPlant(p) {
+  try { await setDoc(doc(db, 'users', account.uid, 'plants', String(p.id)), p); }
+  catch (e) { setMsg(`No se pudo guardar la planta en la nube: ${e.message}`, true); }
+}
+async function cloudDelPlant(id) {
+  try { await deleteDoc(doc(db, 'users', account.uid, 'plants', String(id))); }
+  catch (e) { setMsg(`No se pudo eliminar en la nube: ${e.message}`, true); }
+}
+
+function updateKeyStatus() {
+  setText('key-status', getApiKey() ? 'Clave guardada en este navegador.' : 'Aún no hay clave guardada.');
+}
+
+function saveKey() {
+  const v = $('key-input').value.trim();
+  try { v ? localStorage.setItem(API_KEY_KEY, v) : localStorage.removeItem(API_KEY_KEY); } catch {}
+  $('key-input').value = '';
+  updateKeyStatus();
+}
+
+async function resetAll() {
+  if (!confirm('Se borrarán tu XP, rango y todas las plantas guardadas. ¿Continuar?')) return;
+  if (account) await Promise.all(user.garden.map(p => cloudDelPlant(p.id)));
+  else { try { localStorage.removeItem(USER_KEY); } catch {} }
+  user = { ...DEFAULT_USER, garden:[] };
+  scan = null; show('scan-result', false); show('scan-preview', false); $('scan-prompt').classList.remove('opacity-0'); $('scan-go').disabled = true;
+  persist();
+}
+
+/* ---------- Inicio ---------- */
+function init() {
+  $('nav').innerHTML = TABS.map(([id, label, icon]) => `
+    <button type="button" id="nav-${id}" data-go="${id}" class="flex flex-col items-center gap-1 px-2 py-1 text-gray-400 hover:text-brand-dark">
+      <i class="fa-solid ${icon} text-lg" aria-hidden="true"></i><span class="text-[10px] font-bold">${label}</span>
+    </button>`).join('');
+
+  $('quick-cards').innerHTML = QUICK.map(([go, icon, tone, badge, title, sub, id]) => `
+    <button type="button" data-go="${go}" class="card p-4 hover:border-brand-soft text-left transition flex flex-col justify-between">
+      <div class="w-10 h-10 rounded-xl ${tone} flex items-center justify-center text-xl mb-3"><i class="fa-solid ${icon}"></i></div>
+      <div>
+        <span ${id ? `id="${id}"` : ''} class="inline-block px-2 py-0.5 bg-brand-accent/20 text-brand-dark font-bold text-[10px] rounded-md mb-1">${badge}</span>
+        <h3 class="font-bold text-sm text-brand-dark">${title}</h3>
+        <p class="text-[11px] text-gray-500">${sub}</p>
+      </div>
+    </button>`).join('');
+
+  addBubble('model', '¡Hola! Soy tu mentor botánico. Pregúntame sobre riego, luz, sustratos o poda de cualquier especie. 🌿');
+
+  // Un solo manejador para navegación y borrado
+  document.addEventListener('click', e => {
+    const go = e.target.closest('[data-go]');
+    if (go) return switchTab(go.dataset.go);
+    const del = e.target.closest('[data-del]');
+    if (del && confirm('¿Eliminar esta planta de tu jardín?')) {
+      user.garden = user.garden.filter(p => String(p.id) !== del.dataset.del);
+      persist();
+      if (account) cloudDelPlant(del.dataset.del);
+    }
+  });
+
+  $('scan-file').addEventListener('change', onScanFile);
+  $('scan-change').addEventListener('click', () => $('scan-file').click());
+  $('scan-go').addEventListener('click', identify);
+  $('scan-save').addEventListener('click', saveToGarden);
+  $('doc-file').addEventListener('change', onDocFile);
+  $('doc-go').addEventListener('click', diagnose);
+  $('chat-send').addEventListener('click', sendChat);
+  $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+  $('auth-btn').addEventListener('click', toggleAuth);
+  $('key-save').addEventListener('click', saveKey);
+  $('reset-btn').addEventListener('click', resetAll);
+  $('modal-close').addEventListener('click', () => show('modal', false));
+  $('modal').addEventListener('click', e => { if (e.target === $('modal')) show('modal', false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') show('modal', false); });
+
+  updateUI();
+  updateKeyStatus();
+  switchTab('home');
+  if (CLOUD_READY) onAuthStateChanged(auth, handleAuth);
+  else setMsg('Inicio de sesión sin configurar: añade tu FIREBASE_CONFIG en el código.');
+}
+
+init();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
