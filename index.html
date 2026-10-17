@@ -265,11 +265,13 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, serv
 
 /* ---------- Firebase: pega aquí la configuración de tu proyecto ----------
    Consola de Firebase → Configuración del proyecto → Tus apps → App web → "Config" */
-const FIREBASE_CONFIG = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  appId: ''
+  const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyA1wZBBoPUy3sSCqpAw3wMdsa5o4_LJH9o',
+  authDomain: 'templo-verde.firebaseapp.com',
+  projectId: 'templo-verde',
+  storageBucket: 'templo-verde.firebasestorage.app',
+  messagingSenderId: '711263468914',
+  appId: '1:711263468914:web:e2573c701ca64f649031eb'
 };
 const CLOUD_READY = Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
 let auth = null, db = null;
